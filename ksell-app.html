@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>K-SELL · 역직구 자동화</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0a0a;
+  --surface: #111111;
+  --surface2: #1a1a1a;
+  --border: #2a2a2a;
+  --accent: #c8f135;
+  --accent2: #7fff6e;
+  --text: #f0f0f0;
+  --muted: #666;
+  --danger: #ff4444;
+  --warn: #ffaa00;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.header {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; background: var(--bg); z-index: 100;
+}
+.logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: var(--accent); }
+.logo span { color: var(--text); }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+.main { padding: 20px; max-width: 680px; margin: 0 auto; }
+
+/* Steps */
+.steps { display: flex; gap: 6px; margin-bottom: 28px; align-items: center; }
+.step { display: flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 500; color: var(--muted); transition: color .3s; }
+.step.active { color: var(--accent); }
+.step.done { color: var(--text); }
+.step-num { width: 22px; height: 22px; border-radius: 50%; border: 1px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; transition: all .3s; }
+.step.active .step-num { background: var(--accent); color: #000; border-color: var(--accent); }
+.step.done .step-num { background: var(--text); color: #000; border-color: var(--text); }
+.step-line { flex: 1; height: 1px; background: var(--border); }
+.step-line.done { background: var(--text); }
+
+/* Cards */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 14px; }
+.card.active { border-color: var(--accent); }
+.card-title { font-family: 'Syne', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+
+/* Inputs */
+input[type="text"], input[type="number"], textarea, select {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 14px; color: var(--text);
+  font-family: 'Noto Sans KR', sans-serif; font-size: 13px; outline: none;
+  transition: border-color .2s; resize: none;
+}
+input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+input::placeholder, textarea::placeholder { color: var(--muted); }
+select option { background: var(--surface2); }
+label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+.input-hint { font-size: 11px; color: var(--muted); margin-top: 7px; line-height: 1.5; }
+
+/* Grid layouts */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 12px 20px; border-radius: 10px; font-family: 'Noto Sans KR', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all .2s; width: 100%; }
+.btn-primary { background: var(--accent); color: #000; }
+.btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.btn-outline { background: transparent; color: var(--text); border: 1px solid var(--border); }
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+.btn-sm { padding: 7px 14px; font-size: 12px; width: auto; border-radius: 8px; }
+.btn-go { background: var(--accent); color: #000; }
+.btn-go:hover { background: var(--accent2); }
+.btn-pass { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+.btn-pass:hover { border-color: var(--danger); color: var(--danger); }
+
+/* API Row */
+.api-row { display: flex; gap: 8px; margin-bottom: 14px; }
+.api-row input { flex: 1; font-size: 12px; }
+
+/* Image upload area */
+.img-upload-zone {
+  border: 1.5px dashed var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  margin-bottom: 10px;
+}
+.img-upload-zone:hover { border-color: var(--accent); background: rgba(200,241,53,.04); }
+.img-upload-zone input { display: none; }
+.upload-icon { font-size: 28px; margin-bottom: 8px; }
+.upload-text { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.upload-text strong { color: var(--text); display: block; margin-bottom: 3px; }
+
+/* Image preview grid */
+.img-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.img-thumb {
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  border: 1px solid var(--border);
+}
+.img-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.img-thumb-del {
+  position: absolute; top: 4px; right: 4px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: rgba(0,0,0,.7); color: #fff;
+  font-size: 10px; border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.img-count { font-size: 11px; color: var(--muted); }
+
+/* Tag chips */
+.chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.chip {
+  padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 500;
+  border: 1px solid var(--border); cursor: pointer; transition: all .15s;
+  background: transparent; color: var(--muted);
+}
+.chip.selected { background: var(--accent); color: #000; border-color: var(--accent); }
+.chip:hover:not(.selected) { border-color: var(--accent); color: var(--accent); }
+
+/* Margin display */
+.margin-display { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+.margin-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+.margin-item .lbl { font-size: 10px; color: var(--muted); margin-bottom: 5px; }
+.margin-item .val { font-size: 18px; font-weight: 700; font-family: 'Syne', sans-serif; }
+.val.green { color: var(--accent); }
+.val.red { color: var(--danger); }
+.val.warn { color: var(--warn); }
+
+.decision-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+
+/* Result box */
+.result-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-top: 14px; font-size: 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+.result-box.loading { color: var(--muted); display: flex; align-items: center; gap: 10px; }
+
+/* Spinner */
+.spinner { width: 17px; height: 17px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Tag */
+.tag { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+.tag-green { background: rgba(200,241,53,.15); color: var(--accent); border: 1px solid rgba(200,241,53,.3); }
+.tag-red { background: rgba(255,68,68,.1); color: var(--danger); border: 1px solid rgba(255,68,68,.2); }
+.tag-warn { background: rgba(255,170,0,.1); color: var(--warn); border: 1px solid rgba(255,170,0,.2); }
+
+/* Design preview */
+.design-preview { margin-top: 14px; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.design-preview iframe { width: 100%; min-height: 600px; border: none; background: #fff; }
+.preview-toolbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.preview-toolbar span { font-size: 11px; color: var(--muted); }
+
+/* Toast */
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #000; padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 999; white-space: nowrap; }
+.toast.show { opacity: 1; }
+
+.hidden { display: none !important; }
+.divider { height: 1px; background: var(--border); margin: 14px 0; }
+.section-label { font-size: 11px; color: var(--muted); margin-bottom: 8px; font-weight: 500; text-transform: uppercase; letter-spacing: .05em; }
+
+@media (max-width: 480px) {
+  .main { padding: 14px; }
+  .grid-3 { grid-template-columns: 1fr 1fr; }
+  .img-preview-grid { grid-template-columns: repeat(4, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">K-SELL<span>.</span></div>
+  <div class="status-dot"></div>
+</div>
+
+<div class="main">
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step active" id="s1"><div class="step-num">1</div><span>제품</span></div>
+    <div class="step-line" id="l1"></div>
+    <div class="step" id="s2"><div class="step-num">2</div><span>마진</span></div>
+    <div class="step-line" id="l2"></div>
+    <div class="step" id="s3"><div class="step-num">3</div><span>디자인</span></div>
+  </div>
+
+  <!-- API 설정 -->
+  <div class="card" id="api-card">
+    <div class="card-title">🔑 API 설정</div>
+    <div class="api-row">
+      <input type="text" id="api-key" placeholder="Anthropic API Key (sk-ant-...)">
+      <button class="btn btn-outline btn-sm" onclick="saveKey()">저장</button>
+    </div>
+    <div class="grid-3">
+      <div>
+        <label>환율 (원/RM)</label>
+        <input type="number" id="fx" value="310">
+      </div>
+      <div>
+        <label>Shopee 수수료 (%)</label>
+        <input type="number" id="fee" value="9">
+      </div>
+      <div>
+        <label>배대지 비용 (원)</label>
+        <input type="number" id="bae" value="4000">
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 1: 제품 분석 -->
+  <div class="card active" id="card-step1">
+    <div class="card-title">🔍 Step 1 · 제품 발견</div>
+    <textarea id="product-input" rows="3"
+      placeholder="제품명, 링크, 설명 텍스트 뭐든 붙여넣기&#10;예) Anua Heartleaf 77% Toner Pad&#10;또는 올리브영/스타일코리안 링크"></textarea>
+    <div class="input-hint">제품명만 입력해도 AI가 알아서 도매가·판매가·도매처·할랄 여부까지 파악해줘</div>
+    <div style="margin-top:12px">
+      <button class="btn btn-primary" onclick="step1Analyze()" id="btn-step1">
+        🔎 제품 분석 + 도매처 서칭
+      </button>
+    </div>
+    <div id="result-step1" class="hidden"></div>
+  </div>
+
+  <!-- STEP 2: 마진 계산 -->
+  <div class="card hidden" id="card-step2">
+    <div class="card-title">💰 Step 2 · 마진 계산</div>
+    <div class="grid-2" style="margin-bottom:12px">
+      <div>
+        <label>국내 도매가 (원)</label>
+        <input type="number" id="wholesale-price" placeholder="예) 8500">
+      </div>
+      <div>
+        <label>말레이시아 판매가 (RM)</label>
+        <input type="number" id="sell-price-rm" placeholder="예) 46">
+      </div>
+    </div>
+    <button class="btn btn-outline" onclick="calcMargin()">📊 마진 계산</button>
+    <div id="margin-result" class="hidden">
+      <div class="margin-display">
+        <div class="margin-item"><div class="lbl">건당 순이익</div><div class="val" id="m-profit">-</div></div>
+        <div class="margin-item"><div class="lbl">마진율</div><div class="val" id="m-rate">-</div></div>
+        <div class="margin-item"><div class="lbl">월 50개 판매 시</div><div class="val" id="m-50">-</div></div>
+        <div class="margin-item"><div class="lbl">손익분기 (월고정비 20만)</div><div class="val" id="m-bep">-</div></div>
+      </div>
+      <div id="margin-verdict" style="margin-top:10px"></div>
+      <div class="decision-row">
+        <button class="btn btn-go" onclick="goDesign()">✅ 진행할게</button>
+        <button class="btn btn-pass" onclick="resetAll()">❌ 패스, 다른 제품</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: 상세페이지 생성 -->
+  <div class="card hidden" id="card-step3">
+    <div class="card-title">🎨 Step 3 · 상세페이지 생성</div>
+
+    <!-- 레퍼런스 이미지 업로드 -->
+    <div class="section-label">레퍼런스 이미지 (최대 4장)</div>
+    <div class="img-upload-zone" onclick="document.getElementById('ref-upload').click()">
+      <input type="file" id="ref-upload" accept="image/*" multiple onchange="handleImgUpload(event)">
+      <div class="upload-icon">📸</div>
+      <div class="upload-text">
+        <strong>레퍼런스 이미지 업로드</strong>
+        마음에 드는 Shopee 상세페이지 캡처 1~4장<br>이 스타일 분석해서 비슷한 느낌으로 생성해줄게
+      </div>
+    </div>
+    <div class="img-preview-grid" id="img-preview-grid"></div>
+    <div class="img-count" id="img-count"></div>
+
+    <div class="divider"></div>
+
+    <!-- 강조 포인트 -->
+    <div style="margin-bottom:12px">
+      <label>강조하고 싶은 포인트</label>
+      <textarea id="emphasis" rows="2" placeholder="예) 무기자차 강조, 민감피부도 OK, 백탁 없음, 화장 잘 먹음&#10;필수로 들어가야 할 내용 있으면 여기 써줘"></textarea>
+    </div>
+
+    <!-- 시즌/이벤트 -->
+    <div style="margin-bottom:12px">
+      <label>시즌 / 이벤트</label>
+      <div class="chip-row" id="season-chips">
+        <button class="chip" onclick="toggleChip(this)">일반</button>
+        <button class="chip" onclick="toggleChip(this)">11.11 세일</button>
+        <button class="chip" onclick="toggleChip(this)">12.12 세일</button>
+        <button class="chip" onclick="toggleChip(this)">Raya</button>
+        <button class="chip" onclick="toggleChip(this)">Harbolnas</button>
+        <button class="chip" onclick="toggleChip(this)">Valentine</button>
+        <button class="chip" onclick="toggleChip(this)">여름 시즌</button>
+        <button class="chip" onclick="toggleChip(this)">연말</button>
+      </div>
+    </div>
+
+    <!-- 타겟 & 톤 -->
+    <div class="grid-2" style="margin-bottom:12px">
+      <div>
+        <label>타겟 피부타입</label>
+        <select id="skin-type">
+          <option value="all skin types">전체 피부타입</option>
+          <option value="sensitive skin">민감성 피부</option>
+          <option value="oily/acne-prone skin">지성·트러블 피부</option>
+          <option value="dry skin">건성 피부</option>
+          <option value="combination skin">복합성 피부</option>
+        </select>
+      </div>
+      <div>
+        <label>가격 포지셔닝</label>
+        <select id="positioning">
+          <option value="great value, affordable">가성비 강조</option>
+          <option value="premium quality">프리미엄</option>
+          <option value="mid-range, quality-focused">중가 품질 중심</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- 추가 프롬프트 -->
+    <div style="margin-bottom:14px">
+      <label>추가 요청사항 (자유롭게)</label>
+      <textarea id="extra-prompt" rows="2" placeholder="예) 핑크톤으로, 수상 뱃지 크게 넣어줘, 말레이어 비중 높게, 가격 강조해줘"></textarea>
+    </div>
+
+    <button class="btn btn-primary" onclick="genDesign()" id="btn-design">
+      ✨ 상세페이지 자동 생성
+    </button>
+
+    <div id="result-design" class="hidden"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ──
+let state = {
+  apiKey: '',
+  productInfo: '',
+  refImages: [],  // {dataUrl, base64, type}
+  currentStep: 1
+};
+
+// ── Init ──
+window.onload = () => {
+  const k = localStorage.getItem('ksell_apikey');
+  if (k) { document.getElementById('api-key').value = k; state.apiKey = k; }
+};
+
+function saveKey() {
+  const k = document.getElementById('api-key').value.trim();
+  if (!k) return toast('API 키 입력해줘');
+  state.apiKey = k;
+  localStorage.setItem('ksell_apikey', k);
+  toast('저장됐어 ✓');
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ── Step UI ──
+function setStep(n) {
+  state.currentStep = n;
+  [1,2,3].forEach(i => {
+    const s = document.getElementById('s'+i);
+    s.className = 'step' + (i < n ? ' done' : i === n ? ' active' : '');
+    if (i < 3) document.getElementById('l'+i).className = 'step-line' + (i < n ? ' done' : '');
+  });
+}
+
+// ── Image Upload ──
+function handleImgUpload(e) {
+  const files = Array.from(e.target.files);
+  const remaining = 4 - state.refImages.length;
+  if (remaining <= 0) return toast('최대 4장까지만 가능해');
+
+  const toLoad = files.slice(0, remaining);
+  toLoad.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const dataUrl = ev.target.result;
+      const base64 = dataUrl.split(',')[1];
+      const type = file.type;
+      state.refImages.push({ dataUrl, base64, type });
+      renderImgPreview();
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+}
+
+function renderImgPreview() {
+  const grid = document.getElementById('img-preview-grid');
+  grid.innerHTML = '';
+  state.refImages.forEach((img, i) => {
+    const div = document.createElement('div');
+    div.className = 'img-thumb';
+    div.innerHTML = `<img src="${img.dataUrl}">
+      <button class="img-thumb-del" onclick="removeImg(${i})">✕</button>`;
+    grid.appendChild(div);
+  });
+  const count = document.getElementById('img-count');
+  count.textContent = state.refImages.length > 0 ? `${state.refImages.length}/4장 업로드됨` : '';
+}
+
+function removeImg(i) {
+  state.refImages.splice(i, 1);
+  renderImgPreview();
+}
+
+// ── Chip toggle ──
+function toggleChip(el) {
+  el.classList.toggle('selected');
+}
+
+function getSelectedChips() {
+  return Array.from(document.querySelectorAll('#season-chips .chip.selected'))
+    .map(c => c.textContent).join(', ');
+}
+
+// ── Claude API ──
+async function callClaude(messages, system, maxTokens = 1000) {
+  const key = state.apiKey || localStorage.getItem('ksell_apikey');
+  if (!key) { toast('API 키를 먼저 저장해줘'); throw new Error('no key'); }
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: maxTokens,
+      system: system || '',
+      messages
+    })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content[0].text;
+}
+
+// ── Step 1: 제품 분석 ──
+async function step1Analyze() {
+  const input = document.getElementById('product-input').value.trim();
+  if (!input) return toast('제품 정보를 입력해줘');
+
+  const btn = document.getElementById('btn-step1');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> 분석 중...';
+
+  const resultEl = document.getElementById('result-step1');
+  resultEl.className = 'result-box loading';
+  resultEl.innerHTML = '<div class="spinner"></div> 제품 파악 + 도매처 서칭 중...';
+  resultEl.classList.remove('hidden');
+
+  try {
+    const sys = `너는 K뷰티 역직구 전문가야. 말레이시아 Shopee에 판매할 한국 뷰티 제품을 분석해줘.
+응답은 반드시 아래 형식으로만 해. 다른 말 붙이지 마.
+
+제품명: [정확한 제품명]
+브랜드: [브랜드명]
+용량/규격: [용량]
+주요 성분/특징: [핵심 2~3가지]
+국내 소비자가 추정: [원]
+도매가 추정 (소비자가의 55~65%): [원]
+말레이시아 적정 판매가: [RM]
+말레이시아 수요: [높음/중간/낮음] - [이유 한줄]
+도매 구매 가능 플랫폼: [Q-depot / 도매꾹 / 뷰티넷코리아 중 해당하는 것]
+할랄 인증 여부: [있음/없음/불확실]
+공식 Shopee 스토어: [있음/없음]
+한줄 판단: [판매 추천 / 주의 / 비추 + 이유]`;
+
+    const result = await callClaude(
+      [{ role: 'user', content: `다음 제품을 분석해줘:\n\n${input}` }],
+      sys
+    );
+
+    state.productInfo = result;
+    resultEl.className = 'result-box';
+    resultEl.textContent = result;
+
+    // 자동 파싱
+    const wm = result.match(/도매가 추정[^:]*:\s*([0-9,]+)/);
+    const rm = result.match(/말레이시아 적정 판매가[^:]*:\s*([0-9.]+)/);
+    if (wm) document.getElementById('wholesale-price').value = wm[1].replace(/,/g,'');
+    if (rm) document.getElementById('sell-price-rm').value = rm[1];
+
+    document.getElementById('card-step2').classList.remove('hidden');
+    setStep(2);
+    document.getElementById('card-step2').scrollIntoView({ behavior: 'smooth' });
+
+  } catch(e) {
+    resultEl.className = 'result-box';
+    resultEl.textContent = '오류: ' + e.message;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '🔎 제품 분석 + 도매처 서칭';
+}
+
+// ── Step 2: 마진 ──
+function calcMargin() {
+  const w = parseFloat(document.getElementById('wholesale-price').value) || 0;
+  const rm = parseFloat(document.getElementById('sell-price-rm').value) || 0;
+  const fx = parseFloat(document.getElementById('fx').value) || 310;
+  const fee = parseFloat(document.getElementById('fee').value) / 100 || .09;
+  const bae = parseFloat(document.getElementById('bae').value) || 4000;
+  if (!w || !rm) return toast('도매가와 판매가를 입력해줘');
+
+  state.wholesaleKRW = w;
+  state.sellRM = rm;
+
+  const sellKRW = rm * fx;
+  const shopeeF = Math.round(sellKRW * fee);
+  const profit = sellKRW - w - bae - shopeeF;
+  const rate = Math.round((profit / sellKRW) * 100);
+  const bep = profit > 0 ? Math.ceil(200000 / profit) : '∞';
+
+  const pEl = document.getElementById('m-profit');
+  const rEl = document.getElementById('m-rate');
+  pEl.textContent = Math.round(profit).toLocaleString() + '원';
+  rEl.textContent = rate + '%';
+  document.getElementById('m-50').textContent = Math.round(profit * 50).toLocaleString() + '원';
+  document.getElementById('m-bep').textContent = bep === '∞' ? '∞개' : bep + '개';
+
+  const cls = rate >= 30 ? 'val green' : rate >= 15 ? 'val warn' : 'val red';
+  pEl.className = cls; rEl.className = cls;
+
+  const verdict = document.getElementById('margin-verdict');
+  if (rate >= 30) verdict.innerHTML = '<span class="tag tag-green">✅ 마진 양호 — 진행 추천</span>';
+  else if (rate >= 15) verdict.innerHTML = '<span class="tag tag-warn">⚠ 마진 보통 — 번들 구성 고려</span>';
+  else verdict.innerHTML = '<span class="tag tag-red">❌ 마진 낮음 — 판매가 올리거나 패스 추천</span>';
+
+  document.getElementById('margin-result').classList.remove('hidden');
+}
+
+function goDesign() {
+  document.getElementById('card-step3').classList.remove('hidden');
+  setStep(3);
+  document.getElementById('card-step3').scrollIntoView({ behavior: 'smooth' });
+}
+
+function resetAll() {
+  ['product-input','result-step1'].forEach(id => {
+    const el = document.getElementById(id);
+    el.value !== undefined ? el.value = '' : el.textContent = '';
+    el.className = id === 'result-step1' ? 'hidden' : el.className;
+  });
+  document.getElementById('result-step1').classList.add('hidden');
+  document.getElementById('card-step2').classList.add('hidden');
+  document.getElementById('card-step3').classList.add('hidden');
+  document.getElementById('margin-result').classList.add('hidden');
+  document.getElementById('result-design').classList.add('hidden');
+  state.refImages = [];
+  renderImgPreview();
+  document.querySelectorAll('.chip.selected').forEach(c => c.classList.remove('selected'));
+  setStep(1);
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  toast('초기화됐어. 다른 제품 넣어봐');
+}
+
+// ── Step 3: 디자인 생성 ──
+async function genDesign() {
+  const btn = document.getElementById('btn-design');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> 생성 중...';
+
+  const resultEl = document.getElementById('result-design');
+  resultEl.className = 'result-box loading';
+  resultEl.innerHTML = '<div class="spinner"></div> 상세페이지 디자인 생성 중...';
+  resultEl.classList.remove('hidden');
+
+  const emphasis = document.getElementById('emphasis').value;
+  const season = getSelectedChips() || '일반';
+  const skinType = document.getElementById('skin-type').value;
+  const positioning = document.getElementById('positioning').value;
+  const extra = document.getElementById('extra-prompt').value;
+  const sellRM = document.getElementById('sell-price-rm').value || '?';
+
+  try {
+    // 메시지 구성 — 레퍼런스 이미지 있으면 vision으로
+    let userContent = [];
+
+    // 이미지들 먼저
+    if (state.refImages.length > 0) {
+      userContent.push({
+        type: 'text',
+        text: `다음 ${state.refImages.length}장의 레퍼런스 이미지를 분석해줘. 색감, 레이아웃, 폰트 스타일, 강조 방식, 배지/뱃지 배치, 전체적인 무드를 파악해서 그 스타일로 상세페이지를 만들어줘.`
+      });
+      state.refImages.forEach((img, i) => {
+        userContent.push({
+          type: 'image',
+          source: { type: 'base64', media_type: img.type, data: img.base64 }
+        });
+      });
+    }
+
+    // 제품 정보 + 지시사항
+    userContent.push({
+      type: 'text',
+      text: `
+제품 정보:
+${state.productInfo}
+
+판매가: RM ${sellRM}
+타겟 피부타입: ${skinType}
+가격 포지셔닝: ${positioning}
+시즌/이벤트: ${season}
+${emphasis ? `강조 포인트: ${emphasis}` : ''}
+${extra ? `추가 요청: ${extra}` : ''}
+
+위 조건에 맞게 Shopee Malaysia 상세페이지 HTML을 만들어줘.
+${state.refImages.length > 0 ? '레퍼런스 이미지 스타일을 최대한 반영해서 비슷한 느낌으로 디자인해줘.' : ''}
+완성된 HTML만 출력해. 마크다운 코드블록 없이 <!DOCTYPE html>부터 시작해.`
+    });
+
+    const sys = `너는 Shopee Malaysia K뷰티 상세페이지 전문 디자이너야.
+완성된 HTML 파일 하나를 출력해. 마크다운 코드블록 없이 <!DOCTYPE html>부터 시작해.
+
+디자인 요구사항:
+- 모바일 최적화 (max-width 480px 기준)
+- 영어 + 말레이어 병기
+- 레퍼런스 이미지가 있으면 그 스타일(색감, 레이아웃, 무드)을 최대한 반영해서 독창적으로 재해석
+- 섹션: 메인 히어로 → 핵심 효능 → 성분 → 사용법 → 후기 → 가격+CTA
+- 시즌 이벤트에 맞는 카피와 디자인 요소 반영
+- 이모지·아이콘 활용, 시각적으로 풍성하게
+- CSS는 style 태그에 모두 포함
+- 제품 이미지는 placeholder 박스로 처리`;
+
+    const html = await callClaude(
+      [{ role: 'user', content: userContent }],
+      sys,
+      4000
+    );
+
+    resultEl.className = '';
+    resultEl.innerHTML = `
+      <div class="design-preview">
+        <div class="preview-toolbar">
+          <span>미리보기 — 수정 후 Shopee에 붙여넣기</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm" onclick="copyHTML()">📋 HTML 복사</button>
+            <button class="btn btn-outline btn-sm" onclick="resetAll()">🔄 새 제품</button>
+          </div>
+        </div>
+        <iframe id="preview-frame" sandbox="allow-scripts"></iframe>
+      </div>`;
+
+    window._generatedHTML = html;
+    document.getElementById('preview-frame').srcdoc = html;
+
+  } catch(e) {
+    resultEl.className = 'result-box';
+    resultEl.textContent = '오류: ' + e.message;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '✨ 상세페이지 자동 생성';
+}
+
+function copyHTML() {
+  if (!window._generatedHTML) return;
+  navigator.clipboard.writeText(window._generatedHTML)
+    .then(() => toast('HTML 복사됐어 ✓'))
+    .catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = window._generatedHTML;
+      document.body.appendChild(ta);
+      ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast('HTML 복사됐어 ✓');
+    });
+}
+</script>
+</body>
+</html>

@@ -444,9 +444,13 @@ async function callClaude(messages, system, maxTokens = 1000) {
   const key = state.apiKey || localStorage.getItem('ksell_apikey');
   if (!key) { toast('API 키를 먼저 저장해줘'); throw new Error('no key'); }
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+  const res = await fetch('https://ksell-proxy.vanessachoi1206.workers.dev/', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'anthropic-version': '2023-06-01',
+      'X-API-Key': key
+    },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: maxTokens,
